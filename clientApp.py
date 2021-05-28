@@ -7,15 +7,19 @@ from threading import Thread
 # for GUI
 import tkinter as tk
 from tkinter import *
-import tkinter
 
 # for encryption
 from Crypto.Cipher import AES
 
 from globalData import GlobalData
 
+import sys
 
 
+count = 0
+
+
+# function to make the message dividable by 16 as it is required for AES encryption
 def lenstr(msg):
     size=len(msg)
     if size%16 != 0:
@@ -43,6 +47,7 @@ class HandleEncryption:
         return cipheredText
 
 
+# class containing tkinter objects
 class TkObjects:
     tkObj = tk.Tk()
     messagesFrame = tk.Frame(tkObj)
@@ -54,52 +59,68 @@ class TkObjects:
 
 
 
+# class to handle the client connection
 class HandleConnection:
 
+    # function to receive a message from server and print it to message frame
     @classmethod
     def receive(cls):
         while(True):                                             
             try:
                 message = GlobalData.serverObj.recv(GlobalData.bufferSize)
-                message = str(message , "utf-8")
                 TkObjects.messageList.insert(tk.END , message)
                 TkObjects.messageList.see(tk.END)
-
-
             except OSError:
                 break
             except RuntimeError:
                 break
 
     
+    # function to send a message to the server
     @classmethod
     def send(cls , event=None):
+
+        global count 
+
         message = TkObjects.myMessage.get()
+
+        # first input is name
+        # name with spaces not allowed
+        if(count == 0):
+            messageList = message.split()
+
+            if(len(messageList) > 0):
+                TkObjects.tkObj.deiconify()
+                print("\n\nname with spaces not allowed")
+                input("\npress enter to continue")
+                cls.onClose()
+                sys.exit()
+
+            count = 1
+
+                
+
+        # encrypting the message
         tempMessage = message
         message = HandleEncryption.encrypt(lenstr(message))
 
         TkObjects.myMessage.set("")
 
+        # sending the message
         GlobalData.serverObj.sendto(bytes(message) , GlobalData.serverAddress)
 
+        # if messgae was to quit
         if(tempMessage == GlobalData.quitStatement):
             GlobalData.serverObj.close()
             TkObjects.tkObj.quit()
 
 
-    @classmethod
-    def sendInput(cls , input , event=None):
-
-        message = HandleEncryption.encrypt(lenstr(input))
-        GlobalData.serverObj.sendto(bytes(message) , GlobalData.serverAddress)
-
-
-
-
+    # function to quit the application
     @classmethod
     def onClose(cls , event=None):
         TkObjects.myMessage.set(GlobalData.quitStatement)
         cls.send()
+        TkObjects.tkObj.quit()
 
     
 
@@ -111,7 +132,11 @@ class HandleConnection:
 
 
 if __name__ == "__main__":
+
+    # making up the gui
     TkObjects.tkObj.title("local-secure-chat")
+
+    # hiding the gui window
     TkObjects.tkObj.withdraw()
 
     TkObjects.myMessage.set("Type Here")
@@ -134,6 +159,8 @@ if __name__ == "__main__":
 
     TkObjects.tkObj.protocol("WM_DELETE_WINDOW", HandleConnection.onClose)
 
+
+    # getting the host and port to connect
     GlobalData.host = input("Enter HOST ip address : ")
     GlobalData.port = input("Enter HOST port address : ")
 
@@ -141,11 +168,14 @@ if __name__ == "__main__":
 
     GlobalData.serverAddress = (GlobalData.host , GlobalData.port)
 
+    # init server
     GlobalData.serverObj.connect(GlobalData.serverAddress)
 
-
+    # init receiving thread
     receivingThread = Thread(target=HandleConnection.receive)
     receivingThread.start()
+
+    # showing the window
     TkObjects.tkObj.deiconify()
     tk.mainloop()
 

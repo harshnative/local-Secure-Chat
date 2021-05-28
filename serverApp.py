@@ -69,22 +69,16 @@ class HandleChat:
         # first thing we receive is the clients name
         nameReceived = client.recv(GlobalData.bufferSize)
         name = HandleEncryption.decrypt(nameReceived)
-        name = name.rstrip(b' ')
-        bytesName = name
 
-        # if the name can be converted to string with utf-8 encoding
-        # name should not have white space for this
-        try:
-            name = str(name , "utf-8")
-        except UnicodeDecodeError:
-            pass
+        # removing the extra added during lenStr function
+        name = name.rstrip(b' ')
 
         # sending greetings to user
-        welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(name , GlobalData.quitStatement)
+        welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(str(name) , GlobalData.quitStatement)
         client.send(bytes(welcomeMessage , "utf-8"))
 
         # broadcast message to all the connected user that name as connected
-        toSend = "{} has joined the local-secure-chat".format(name)
+        toSend = name + b"{} has joined the local-secure-chat"
         cls.broadcast(bytes(toSend , "utf-8"))
 
         # adding client to storage
@@ -100,6 +94,7 @@ class HandleChat:
             except OSError:
                 break
 
+            # decrypting the message
             messageReceived = HandleEncryption.decrypt(messageReceived)
             messageReceived = messageReceived.rstrip(b" ")
 
@@ -107,7 +102,8 @@ class HandleChat:
             if(messageReceived != bytes(GlobalData.quitStatement , "utf-8")):
                 
                 # broadcast the message to every one
-                cls.broadcast(messageReceived , bytesName)
+                # here we don't need to worry about space as we are not working with string
+                cls.broadcast(messageReceived , name)
 
             else:
 
@@ -121,7 +117,7 @@ class HandleChat:
                 del GlobalData.clients[client]
 
                 # broad cast to let others know that name as left the chat room
-                cls.broadcast(bytes("{} has left the chat room".format(bytesName) , "utf-8"))
+                cls.broadcast(bytes("{} has left the chat room".format(name) , "utf-8"))
 
                 break
 
@@ -129,19 +125,15 @@ class HandleChat:
     # function to broadcast a message to all the clients
     @classmethod
     def broadcast(cls , message , name = b""):
+
+        # if the name contains space then it cannot be used with utf-8
         name = name + b" : "
 
-        try:
-            name = str(name , "utf-8")
-            toSend = bytes(name , "utf-8") +  message
-
-        except UnicodeDecodeError:
-            toSend = bytes(name) +  message
-
-
+        toSend = bytes(name) +  message
 
         tempGlobalClients = GlobalData.clients.copy()
 
+        # sending message to each client
         for sock in tempGlobalClients:
             try:
                 sock.send(toSend)
@@ -159,6 +151,8 @@ class HandleChat:
 
 if __name__ == "__main__":
 
+
+    # getting the ip address
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
 
@@ -170,7 +164,10 @@ if __name__ == "__main__":
     try:
         GlobalData.serverObj.bind(GlobalData.serverAddress)
     except error as e:
+            # if the port number is unavailable
             if(e.errno == errno.EADDRINUSE):
+
+                # getting the port number
                 with closing(s) as s:
                     s.close()
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -181,20 +178,21 @@ if __name__ == "__main__":
                     # assign the port to object
                     GlobalData.port = s.getsockname()[1]
 
+            # initialising serve object
             s.close()
             GlobalData.serverAddress = (GlobalData.host , GlobalData.port)
             GlobalData.serverObj.bind(GlobalData.serverAddress)
 
 
-
+    # printing ip address and port number to connect
     print("IP serverAddress of the server : {}".format(GlobalData.host))
     print("port used by the server is : {}".format(GlobalData.port))
-
-
+    
     GlobalData.serverObj.listen(GlobalData.maxConnectionLimit)
 
     print("Waiting for connection...")
 
+    # each new connection will get a sepearte thread
     try:
         startThreading = Thread(target=HandleChat.acceptIncomingConnection)
         
