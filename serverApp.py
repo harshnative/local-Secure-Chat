@@ -7,47 +7,11 @@ from threading import Thread
 # for encryption
 from Crypto.Cipher import AES
 
-
-
-class GlobalData:
-    clients = {}
-    addresses = {}
-
-    #To find ip of my lan network. CLI command : ifconfig
-    host = gethostbyname(gethostname()) 
-    
-    port = 5000
-    bufferSize = 1024
-    serverAddress = (host, port)
-
-    # initialising socket model
-    serverObj = socket(AF_INET, SOCK_STREAM)
-    serverObj.bind(serverAddress)
-
-    # encryption key in string
-    encKey = "iUJ}qh'GxpIKdNB'*p'aXF.!5#F_LR[FK8k>8.ZX82?bZ5<ic[.bf^o9+eh(B@d"
-    
-    # An initialization vector (IV) is an arbitrary number that can be used along with a secret key for data encryption.
-    aesObj = AES.new(encKey , AES.MODE_CBC ,  'This is an IV456')
-
-    welcomeMessage = "Welcome to local-secure-chat"
-
-    quitStatement = "okquit"
-
-    maxConnectionLimit = 7
+# Global Data
+from globalData import GlobalData
 
 
 
-def lenstr(msg):
-    size=len(msg)
-    if size%16 != 0:
-        for i in range(size,200):
-            if i%16 == 0:
-                return msg
-            else:
-                msg=msg+" "
-    else:
-        return msg
 
 
 
@@ -88,7 +52,7 @@ class HandleChat:
             GlobalData.addresses[client] = clientAddress
 
             # init thread
-            Thread(target=cls.handleClient , args=(client)).start()
+            Thread(target=cls.handleClient , args=(client , )).start()
 
 
     # function to handle the initiated client connection
@@ -106,7 +70,7 @@ class HandleChat:
 
         # broadcast message to all the connected user that name as connected
         toSend = "{} has joined the local-secure-chat".format(name)
-        cls.broadcastMessage(bytes(toSend , "utf-8"))
+        cls.broadcast(bytes(toSend , "utf-8"))
 
         # adding client to storage
         GlobalData.clients[client] = name
@@ -158,7 +122,15 @@ class HandleChat:
 
 
 if __name__ == "__main__":
+
+    GlobalData.host = gethostbyname(gethostname()) 
+    GlobalData.serverAddress = (GlobalData.host , GlobalData.port)
+
+    GlobalData.serverObj.bind(GlobalData.serverAddress)
+
+
     print("IP serverAddress of the server : {}".format(GlobalData.host))
+
 
     GlobalData.serverObj.listen(GlobalData.maxConnectionLimit)
 
