@@ -52,6 +52,13 @@ class TkObjects:
 
 
 
+def getAndEraseResultTK():
+    message = TkObjects.myMessage.get()
+    TkObjects.myMessage.set("")
+    return message
+
+
+
 class HandleConnection:
 
     @classmethod
@@ -66,11 +73,9 @@ class HandleConnection:
     
     @classmethod
     def send(cls , event=None):
-        message = TkObjects.myMessage.get()
-        tempMessage = message
-        message = HandleEncryption.encrypt(lenstr(message))
+        tempMessage = getAndEraseResultTK()
+        message = HandleEncryption.encrypt(lenstr(tempMessage))
 
-        TkObjects.myMessage.set("")
 
         GlobalData.serverObj.sendto(bytes(message) , GlobalData.serverAddress)
 
