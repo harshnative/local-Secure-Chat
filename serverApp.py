@@ -12,9 +12,9 @@ from Crypto.Cipher import AES
 # Global Data
 from globalData import GlobalData
 
+
 from contextlib import closing
 
-import copy
 
 
 
@@ -51,6 +51,7 @@ class HandleChat:
             # printing the connection details
             print("{} has connected".format(clientAddress))
 
+            # send a welcome message and ask for name
             client.send(bytes(GlobalData.welcomeMessage , "utf-8"))
             client.send(bytes(" || Send you name please!" , "utf-8"))
 
@@ -71,6 +72,8 @@ class HandleChat:
         name = name.rstrip(b' ')
         bytesName = name
 
+        # if the name can be converted to string with utf-8 encoding
+        # name should not have white space for this
         try:
             name = str(name , "utf-8")
         except UnicodeDecodeError:
