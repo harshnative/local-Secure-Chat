@@ -1,5 +1,7 @@
 # for local communication
-from socket import AF_INET, socket, SOCK_STREAM,gethostbyname,gethostname
+import socket
+from socket import error, setdefaulttimeout
+import errno
 
 # for threading chats
 from threading import Thread
@@ -9,6 +11,8 @@ from Crypto.Cipher import AES
 
 # Global Data
 from globalData import GlobalData
+
+from contextlib import closing
 
 
 
@@ -113,7 +117,10 @@ class HandleChat:
         toSend = bytes(name) +  message
 
         for sock in GlobalData.clients:
-            sock.send(toSend)
+            try:
+                sock.send(toSend)
+            except BrokenPipeError:
+                print("failed to broadcast to {} because of broken pipe".format(sock))
 
 
 
@@ -123,13 +130,30 @@ class HandleChat:
 
 if __name__ == "__main__":
 
-    GlobalData.host = gethostbyname(gethostname()) 
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+
+
+    GlobalData.host = s.getsockname()[0]
+
     GlobalData.serverAddress = (GlobalData.host , GlobalData.port)
 
-    GlobalData.serverObj.bind(GlobalData.serverAddress)
+    try:
+        GlobalData.serverObj.bind(GlobalData.serverAddress)
+    except error as e:
+            if(e.errno == errno.EADDRINUSE):
+                with closing(s) as s:
+                    s.bind(('', 0))
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        
+                    # assign the port to object
+                    GlobalData.port = s.getsockname()[1]
+
+    s.close()
 
 
     print("IP serverAddress of the server : {}".format(GlobalData.host))
+    print("port used by the server is : {}".format(GlobalData.port))
 
 
     GlobalData.serverObj.listen(GlobalData.maxConnectionLimit)

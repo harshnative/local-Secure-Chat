@@ -76,12 +76,21 @@ class HandleConnection:
 
         if(tempMessage == GlobalData.quitStatement):
             GlobalData.serverObj.close()
-            GlobalData.tkObj.quit()
+            TkObjects.tkObj.quit()
+
+
+    @classmethod
+    def sendInput(cls , input , event=None):
+
+        message = HandleEncryption.encrypt(lenstr(input))
+        GlobalData.serverObj.sendto(bytes(message) , GlobalData.serverAddress)
+
+
 
 
     @classmethod
     def onClose(cls , event=None):
-        GlobalData.myMessage.set(GlobalData.quitStatement)
+        TkObjects.myMessage.set(GlobalData.quitStatement)
         cls.send()
 
     
@@ -95,8 +104,9 @@ class HandleConnection:
 
 if __name__ == "__main__":
     TkObjects.tkObj.title("local-secure-chat")
+    TkObjects.tkObj.withdraw()
 
-    TkObjects.myMessage.set("Type your name and press send")
+    TkObjects.myMessage.set("Type Message Here")
 
     TkObjects.scrollBar.pack(side=tk.RIGHT , fill=tk.Y)
 
@@ -107,6 +117,7 @@ if __name__ == "__main__":
 
     TkObjects.entryField.bind("<Return>" , HandleConnection.send)
     TkObjects.entryField.pack()
+    TkObjects.entryField.focus()
 
     TkObjects.sendButton = tk.Button(TkObjects.tkObj , text="Send" , command=HandleConnection.send)
     TkObjects.sendButton.pack()
@@ -115,6 +126,7 @@ if __name__ == "__main__":
 
     GlobalData.host = input("Enter HOST ip address : ")
     GlobalData.port = input("Enter HOST port address : ")
+    
 
     GlobalData.port = int(GlobalData.port)
 
@@ -124,7 +136,13 @@ if __name__ == "__main__":
 
 
     receivingThread = Thread(target=HandleConnection.receive)
+    receivingThread.setDaemon(True)
     receivingThread.start()
+
+    name = input("Enter your name : ")
+    HandleConnection.sendInput(name)
+
+    TkObjects.tkObj.deiconify()
     tk.mainloop()
 
     
