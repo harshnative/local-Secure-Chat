@@ -14,6 +14,8 @@ from globalData import GlobalData
 
 from contextlib import closing
 
+import copy
+
 
 
 
@@ -50,7 +52,7 @@ class HandleChat:
             print("{} has connected".format(clientAddress))
 
             client.send(bytes(GlobalData.welcomeMessage , "utf-8"))
-            client.send(bytes("Send you name please!" , "utf-8"))
+            client.send(bytes(" || Send you name please!" , "utf-8"))
 
             # storing the new connection details in dictionary
             GlobalData.addresses[client] = clientAddress
@@ -67,6 +69,12 @@ class HandleChat:
         nameReceived = client.recv(GlobalData.bufferSize)
         name = HandleEncryption.decrypt(nameReceived)
         name = name.rstrip(b' ')
+        bytesName = name
+
+        try:
+            name = str(name , "utf-8")
+        except UnicodeDecodeError:
+            pass
 
         # sending greetings to user
         welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(name , GlobalData.quitStatement)
@@ -82,7 +90,13 @@ class HandleChat:
         while(True):
 
             # decryting the message
-            messageReceived = client.recv(GlobalData.bufferSize)
+            try:
+                messageReceived = client.recv(GlobalData.bufferSize)
+            
+            # bad file descriptor
+            except OSError:
+                break
+
             messageReceived = HandleEncryption.decrypt(messageReceived)
             messageReceived = messageReceived.rstrip(b" ")
 
@@ -90,7 +104,7 @@ class HandleChat:
             if(messageReceived != bytes(GlobalData.quitStatement , "utf-8")):
                 
                 # broadcast the message to every one
-                cls.broadcast(messageReceived , name)
+                cls.broadcast(messageReceived , bytesName)
 
             else:
 
@@ -104,7 +118,7 @@ class HandleChat:
                 del GlobalData.clients[client]
 
                 # broad cast to let others know that name as left the chat room
-                cls.broadcast(bytes("{} has left the chat room".format(name) , "utf-8"))
+                cls.broadcast(bytes("{} has left the chat room".format(bytesName) , "utf-8"))
 
                 break
 
@@ -114,14 +128,26 @@ class HandleChat:
     def broadcast(cls , message , name = b""):
         name = name + b" : "
 
-        toSend = bytes(name) +  message
+        try:
+            name = str(name , "utf-8")
+            toSend = bytes(name , "utf-8") +  message
 
-        for sock in GlobalData.clients:
+        except UnicodeDecodeError:
+            toSend = bytes(name) +  message
+
+
+
+        tempGlobalClients = GlobalData.clients.copy()
+
+        for sock in tempGlobalClients:
             try:
                 sock.send(toSend)
             except BrokenPipeError:
-                print("failed to broadcast to {} because of broken pipe".format(sock))
+                print("failed to broadcast to {} because of broken pipe , deleting client".format(sock))
+                sock.close()
 
+                # delete the client data
+                del GlobalData.clients[sock]
 
 
 
@@ -143,13 +169,19 @@ if __name__ == "__main__":
     except error as e:
             if(e.errno == errno.EADDRINUSE):
                 with closing(s) as s:
+                    s.close()
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
                     s.bind(('', 0))
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                         
                     # assign the port to object
                     GlobalData.port = s.getsockname()[1]
 
-    s.close()
+            s.close()
+            GlobalData.serverAddress = (GlobalData.host , GlobalData.port)
+            GlobalData.serverObj.bind(GlobalData.serverAddress)
+
 
 
     print("IP serverAddress of the server : {}".format(GlobalData.host))
@@ -160,9 +192,13 @@ if __name__ == "__main__":
 
     print("Waiting for connection...")
 
-    startThreading = Thread(target=HandleChat.acceptIncomingConnection)
-    
-    startThreading.start()
-    startThreading.join()
-    GlobalData.serverObj.close()
+    try:
+        startThreading = Thread(target=HandleChat.acceptIncomingConnection)
+        
+        startThreading.start()
+        startThreading.join()
+        GlobalData.serverObj.close()
+    except KeyboardInterrupt:
+        GlobalData.serverObj.close()
+
     

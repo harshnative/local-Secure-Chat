@@ -6,6 +6,8 @@ from threading import Thread
 
 # for GUI
 import tkinter as tk
+from tkinter import *
+import tkinter
 
 # for encryption
 from Crypto.Cipher import AES
@@ -46,16 +48,9 @@ class TkObjects:
     messagesFrame = tk.Frame(tkObj)
     myMessage = tk.StringVar()
     scrollBar = tk.Scrollbar(messagesFrame)
-    messageList = tk.Listbox(messagesFrame , height=30 , width=80 , yscrollcommand=scrollBar.set)
-    entryField = tk.Entry(tkObj , textvariable=myMessage)
+    messageList = tk.Listbox(messagesFrame , height=25 , width=70 , font=('Times', 20) , yscrollcommand=scrollBar.set)
+    entryField = tk.Entry(tkObj , textvariable=myMessage , background = "#D3D3D3" , font = "Helvetica 20",width=50)
     sendButton = tk.Button(tkObj , text="Send")
-
-
-
-def getAndEraseResultTK():
-    message = TkObjects.myMessage.get()
-    TkObjects.myMessage.set("")
-    return message
 
 
 
@@ -63,19 +58,27 @@ class HandleConnection:
 
     @classmethod
     def receive(cls):
-        while(True):
+        while(True):                                             
             try:
                 message = GlobalData.serverObj.recv(GlobalData.bufferSize)
+                message = str(message , "utf-8")
                 TkObjects.messageList.insert(tk.END , message)
+                TkObjects.messageList.see(tk.END)
+
+
             except OSError:
+                break
+            except RuntimeError:
                 break
 
     
     @classmethod
     def send(cls , event=None):
-        tempMessage = getAndEraseResultTK()
-        message = HandleEncryption.encrypt(lenstr(tempMessage))
+        message = TkObjects.myMessage.get()
+        tempMessage = message
+        message = HandleEncryption.encrypt(lenstr(message))
 
+        TkObjects.myMessage.set("")
 
         GlobalData.serverObj.sendto(bytes(message) , GlobalData.serverAddress)
 
@@ -111,27 +114,28 @@ if __name__ == "__main__":
     TkObjects.tkObj.title("local-secure-chat")
     TkObjects.tkObj.withdraw()
 
-    TkObjects.myMessage.set("Type Message Here")
+    TkObjects.myMessage.set("Type Here")
 
     TkObjects.scrollBar.pack(side=tk.RIGHT , fill=tk.Y)
 
     TkObjects.messageList.pack(side = tk.LEFT , fill=tk.BOTH)
     TkObjects.messageList.pack()
+    TkObjects.messageList.see(tk.END)
 
     TkObjects.messagesFrame.pack()
 
     TkObjects.entryField.bind("<Return>" , HandleConnection.send)
-    TkObjects.entryField.pack()
+    TkObjects.entryField.pack(padx=20, pady=20)
     TkObjects.entryField.focus()
 
-    TkObjects.sendButton = tk.Button(TkObjects.tkObj , text="Send" , command=HandleConnection.send)
+
+    TkObjects.sendButton = tk.Button(TkObjects.tkObj , text="Send" , command=HandleConnection.send , font = "Helvetica 20 bold" , height = 2, width = 20 , bg='green')
     TkObjects.sendButton.pack()
 
     TkObjects.tkObj.protocol("WM_DELETE_WINDOW", HandleConnection.onClose)
 
     GlobalData.host = input("Enter HOST ip address : ")
     GlobalData.port = input("Enter HOST port address : ")
-    
 
     GlobalData.port = int(GlobalData.port)
 
@@ -141,12 +145,7 @@ if __name__ == "__main__":
 
 
     receivingThread = Thread(target=HandleConnection.receive)
-    receivingThread.setDaemon(True)
     receivingThread.start()
-
-    name = input("Enter your name : ")
-    HandleConnection.sendInput(name)
-
     TkObjects.tkObj.deiconify()
     tk.mainloop()
 

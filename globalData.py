@@ -15,7 +15,7 @@ class GlobalData:
     #To find ip of my lan network. CLI command : ifconfig
     host = None
     
-    port = 5001
+    port = 5000
     bufferSize = 1024
     serverAddress = (host, port)
 
