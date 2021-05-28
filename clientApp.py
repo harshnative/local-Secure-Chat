@@ -85,16 +85,18 @@ class HandleConnection:
         message = TkObjects.myMessage.get()
 
         # first input is name
-        # name with spaces not allowed
         if(count == 0):
-            messageList = message.split()
 
-            if(len(messageList) > 0):
-                TkObjects.tkObj.deiconify()
-                print("\n\nname with spaces not allowed")
-                input("\npress enter to continue")
-                cls.onClose()
-                sys.exit()
+            try:
+                bytes(message , "utf-8")
+            except Exception:
+                messageList = message.split()
+
+                if(len(messageList) > 1):
+                    TkObjects.tkObj.deiconify()
+                    print("\n\n{} name is not allowed".format(message))
+                    input("\npress enter to continue")
+                    sys.exit()
 
             count = 1
 

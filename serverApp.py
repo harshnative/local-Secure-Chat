@@ -53,7 +53,7 @@ class HandleChat:
 
             # send a welcome message and ask for name
             client.send(bytes(GlobalData.welcomeMessage , "utf-8"))
-            client.send(bytes(" || Send you name please!" , "utf-8"))
+            client.send(bytes("|| Send you name please!" , "utf-8"))
 
             # storing the new connection details in dictionary
             GlobalData.addresses[client] = clientAddress
@@ -74,11 +74,15 @@ class HandleChat:
         name = name.rstrip(b' ')
 
         # sending greetings to user
-        welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(str(name) , GlobalData.quitStatement)
-        client.send(bytes(welcomeMessage , "utf-8"))
+        try:
+            welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(str(name , "utf-8") , GlobalData.quitStatement)
+            client.send(bytes(welcomeMessage , "utf-8"))
+        except UnicodeDecodeError:
+            client.send(bytes("This name is not allowed , you are allocated name : user" , "utf-8"))
+            name = b"user"
 
         # broadcast message to all the connected user that name as connected
-        toSend = name + b"{} has joined the local-secure-chat"
+        toSend = "{} has joined the local-secure-chat".format(str(name , "utf-8"))
         cls.broadcast(bytes(toSend , "utf-8"))
 
         # adding client to storage
