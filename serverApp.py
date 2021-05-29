@@ -17,7 +17,7 @@ from globalData import GlobalData
 from contextlib import closing
 
 # for data base
-from easySQLite import eSqlite as ES
+import eSqlite as ES
 
 import csv
 from datetime import datetime
