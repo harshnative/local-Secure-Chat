@@ -2,7 +2,6 @@
 import socket
 from socket import error, setdefaulttimeout
 import errno
-from sqlite3.dbapi2 import Date
 
 # for threading chats
 from threading import Thread
