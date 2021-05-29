@@ -12,6 +12,7 @@ from tkinter import *
 from globalData import GlobalData
 
 import sys
+import time
 
 
 count = 0
@@ -63,8 +64,21 @@ class HandleConnection:
                 message = str(message , "utf-8")
                 message = HandleEncryption.decryptor(message)
 
+
                 TkObjects.messageList.insert(tk.END , message)
                 TkObjects.messageList.see(tk.END)
+
+
+                if(message == "You are not allowed to join , ending connection"):
+                    time.sleep(2)
+                    TkObjects.tkObj.quit()
+                    sys.exit()
+
+                if(message == "invalid key , ending connection"):
+                    time.sleep(2)
+                    TkObjects.tkObj.quit()
+                    sys.exit()
+
             except OSError:
                 break
             except RuntimeError:

@@ -15,6 +15,25 @@ from globalData import GlobalData
 
 from contextlib import closing
 
+# for data base
+from easySQLite import eSqlite as ES
+
+import csv
+
+
+class GlobalData_server:
+    sObj = ES.SQLiteConnect()
+
+    usersDict = {}
+
+    with open('user.csv') as csvFile:
+        csvReader = csv.reader(csvFile, delimiter=',')
+
+        for row in csvReader:
+            usersDict[str(row[0])] = str(row[1])
+
+
+
 
 
 
@@ -58,10 +77,7 @@ class HandleChat:
             print("{} has connected".format(clientAddress))
 
             # send a welcome message and ask for name
-            toSend = HandleEncryption.encryptor(GlobalData.welcomeMessage)
-            client.send(bytes(toSend , "utf-8"))
-
-            toSend = HandleEncryption.encryptor("Send you name please!")
+            toSend = HandleEncryption.encryptor(GlobalData.welcomeMessage + " , Send you name please! ")
             client.send(bytes(toSend , "utf-8"))
 
             # storing the new connection details in dictionary
@@ -81,6 +97,25 @@ class HandleChat:
         nameReceived = str(nameReceived , "utf-8")
 
         name = HandleEncryption.decryptor(nameReceived)
+
+        if(None == GlobalData_server.usersDict.get(name , None)):
+            toSend = HandleEncryption.encryptor("You are not allowed to join , ending connection")
+            client.send(bytes(toSend , "utf-8"))
+            return
+
+
+        toSend = HandleEncryption.encryptor("Please Send your Key")
+        client.send(bytes(toSend , "utf-8"))
+
+        keyReceived = client.recv(GlobalData.bufferSize)
+        keyReceived = str(keyReceived , "utf-8")
+        keyReceived = HandleEncryption.decryptor(keyReceived)
+
+        if(keyReceived != GlobalData_server.usersDict.get(name , None)):
+            toSend = HandleEncryption.encryptor("invalid key , ending connection")
+            client.send(bytes(toSend , "utf-8"))
+            return
+
 
         # sending greetings to user
         welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(name , GlobalData.quitStatement)
