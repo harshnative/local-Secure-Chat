@@ -2,6 +2,7 @@
 import socket
 from socket import error, setdefaulttimeout
 import errno
+from sqlite3.dbapi2 import Date
 
 # for threading chats
 from threading import Thread
@@ -19,11 +20,32 @@ from contextlib import closing
 from easySQLite import eSqlite as ES
 
 import csv
+from datetime import datetime
+import sys
 
 
 class GlobalData_server:
-    sObj = ES.SQLiteConnect()
 
+    # setting up db module
+    sObj = ES.SQLiteConnect()
+    sObj.setDatabase("chatDatabase.db")
+
+    result = sObj.setPassword(GlobalData.stringKey , pin = 123456)
+
+    if(result == None):
+        pass
+    elif(result == False):              
+        print("chat data base was created with diff key , delete previous chatDatabase.db to continue")
+        sys.exit()
+
+    sObj.setSecurityStatus(True)
+
+    contentList = [["name" , "TEXT" , 1] , ["message" , "TEXT" , 1] , ["timeStamp" , "TEXT" , 1]]
+
+    sObj.createTable("chatData" , contentList , raiseException = False)
+
+
+    # setting up key verfication dictionary
     usersDict = {}
 
     with open('user.csv') as csvFile:
@@ -184,6 +206,7 @@ class HandleChat:
         # sending message to each client
         for sock in tempGlobalClients:
             try:
+                GlobalData_server.sObj.insertIntoTable([name[:-2] , message , str(datetime.now())] , keyPass = None , tableName = None , forPass = False , commit = True)
                 print(name + message)
                 sock.send(bytes(toSend , "utf-8"))
             except BrokenPipeError:
