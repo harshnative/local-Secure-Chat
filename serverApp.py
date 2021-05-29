@@ -7,7 +7,7 @@ import errno
 from threading import Thread
 
 # for encryption
-from Crypto.Cipher import AES
+from cryptography.fernet import Fernet
 
 # Global Data
 from globalData import GlobalData
@@ -25,14 +25,20 @@ from contextlib import closing
 class HandleEncryption:
 
     @classmethod
-    def decrypt(cls , encryptedText):
-        decryptedMessage = GlobalData.aesObj.decrypt(encryptedText)
-        return decryptedMessage
+    def encryptor(self , string):
+        stringToPass = bytes(string , "utf-8")
+        encodedText = GlobalData.cipherSuite.encrypt(stringToPass)
+        return encodedText.decode("utf-8")
 
+        
+
+    
+    # function to decrypt the passed string
     @classmethod
-    def encrypt(cls , toencrypt):
-        cipheredText = GlobalData.aesObj.encrypt(toencrypt)
-        return cipheredText
+    def decryptor(self , string):
+        stringToPass = bytes(string , "utf-8")
+        decodedText = GlobalData.cipherSuite.decrypt(stringToPass)
+        return decodedText.decode("utf-8")
 
 
 
@@ -52,8 +58,11 @@ class HandleChat:
             print("{} has connected".format(clientAddress))
 
             # send a welcome message and ask for name
-            client.send(bytes(GlobalData.welcomeMessage , "utf-8"))
-            client.send(bytes("|| Send you name please!" , "utf-8"))
+            toSend = HandleEncryption.encryptor(GlobalData.welcomeMessage)
+            client.send(bytes(toSend , "utf-8"))
+
+            toSend = HandleEncryption.encryptor("Send you name please!")
+            client.send(bytes(toSend , "utf-8"))
 
             # storing the new connection details in dictionary
             GlobalData.addresses[client] = clientAddress
@@ -68,22 +77,19 @@ class HandleChat:
 
         # first thing we receive is the clients name
         nameReceived = client.recv(GlobalData.bufferSize)
-        name = HandleEncryption.decrypt(nameReceived)
 
-        # removing the extra added during lenStr function
-        name = name.rstrip(b' ')
+        nameReceived = str(nameReceived , "utf-8")
+
+        name = HandleEncryption.decryptor(nameReceived)
 
         # sending greetings to user
-        try:
-            welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(str(name , "utf-8") , GlobalData.quitStatement)
-            client.send(bytes(welcomeMessage , "utf-8"))
-        except UnicodeDecodeError:
-            client.send(bytes("This name is not allowed , you are allocated name : user" , "utf-8"))
-            name = b"user"
+        welcomeMessage = "Welcome {} , To quit chat type and send : {}".format(name , GlobalData.quitStatement)
+        toSend = HandleEncryption.encryptor(welcomeMessage)
+        client.send(bytes(toSend , "utf-8"))
 
         # broadcast message to all the connected user that name as connected
-        toSend = "{} has joined the local-secure-chat".format(str(name , "utf-8"))
-        cls.broadcast(bytes(toSend , "utf-8"))
+        toSend = "{} has joined the local-secure-chat".format(name)
+        cls.broadcast(toSend)
 
         # adding client to storage
         GlobalData.clients[client] = name
@@ -99,11 +105,11 @@ class HandleChat:
                 break
 
             # decrypting the message
-            messageReceived = HandleEncryption.decrypt(messageReceived)
-            messageReceived = messageReceived.rstrip(b" ")
+            messageReceived = str(messageReceived , "utf-8")
+            messageReceived = HandleEncryption.decryptor(messageReceived)
 
             # if user does not want to quit
-            if(messageReceived != bytes(GlobalData.quitStatement , "utf-8")):
+            if(messageReceived != GlobalData.quitStatement):
                 
                 # broadcast the message to every one
                 # here we don't need to worry about space as we are not working with string
@@ -114,33 +120,37 @@ class HandleChat:
                 # init the closing sequence
 
                 # send the client also to close the connection
-                client.send(bytes(GlobalData.quitStatement , "utf-8"))
+                toSend = HandleEncryption.encryptor(GlobalData.quitStatement)
+                client.send(bytes(toSend , "utf-8"))
                 client.close()
 
                 # delete the client data
                 del GlobalData.clients[client]
 
+
                 # broad cast to let others know that name as left the chat room
-                cls.broadcast(bytes("{} has left the chat room".format(name) , "utf-8"))
+                toSend = HandleEncryption.encryptor("{} has left the chat room".format(name))
+                cls.broadcast(toSend)
 
                 break
 
 
     # function to broadcast a message to all the clients
     @classmethod
-    def broadcast(cls , message , name = b""):
+    def broadcast(cls , message , name = ""):
 
         # if the name contains space then it cannot be used with utf-8
-        name = name + b" : "
+        name = name + " : "
 
-        toSend = bytes(name) +  message
+        toSend = HandleEncryption.encryptor(name + message)
 
         tempGlobalClients = GlobalData.clients.copy()
 
         # sending message to each client
         for sock in tempGlobalClients:
             try:
-                sock.send(toSend)
+                print(name + message)
+                sock.send(bytes(toSend , "utf-8"))
             except BrokenPipeError:
                 print("failed to broadcast to {} because of broken pipe , deleting client".format(sock))
                 sock.close()

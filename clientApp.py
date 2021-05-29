@@ -9,8 +9,6 @@ import tkinter as tk
 from tkinter import *
 
 # for encryption
-from Crypto.Cipher import AES
-
 from globalData import GlobalData
 
 import sys
@@ -19,32 +17,24 @@ import sys
 count = 0
 
 
-# function to make the message dividable by 16 as it is required for AES encryption
-def lenstr(msg):
-    size=len(msg)
-    if size%16 != 0:
-        for i in range(size,600):
-            if i%16 == 0:
-                return msg
-            else:
-                msg=msg+" "
-    else:
-        return msg
-
 
 
 # class contain methods to handle encryption and decrption using AES module
 class HandleEncryption:
 
     @classmethod
-    def decrypt(cls , encryptedText):
-        decryptedMessage = GlobalData.aesObj.decrypt(encryptedText)
-        return decryptedMessage
+    def encryptor(self , string):
+        stringToPass = bytes(string , "utf-8")
+        encodedText = GlobalData.cipherSuite.encrypt(stringToPass)
+        return encodedText.decode("utf-8")
 
+    
+    # function to decrypt the passed string
     @classmethod
-    def encrypt(cls , toencrypt):
-        cipheredText = GlobalData.aesObj.encrypt(toencrypt)
-        return cipheredText
+    def decryptor(self , string):
+        stringToPass = bytes(string , "utf-8")
+        decodedText = GlobalData.cipherSuite.decrypt(stringToPass)
+        return decodedText.decode("utf-8")
 
 
 # class containing tkinter objects
@@ -68,6 +58,11 @@ class HandleConnection:
         while(True):                                             
             try:
                 message = GlobalData.serverObj.recv(GlobalData.bufferSize)
+
+                # decrypting message
+                message = str(message , "utf-8")
+                message = HandleEncryption.decryptor(message)
+
                 TkObjects.messageList.insert(tk.END , message)
                 TkObjects.messageList.see(tk.END)
             except OSError:
@@ -84,32 +79,16 @@ class HandleConnection:
 
         message = TkObjects.myMessage.get()
 
-        # first input is name
-        if(count == 0):
-
-            try:
-                bytes(message , "utf-8")
-            except Exception:
-                messageList = message.split()
-
-                if(len(messageList) > 1):
-                    TkObjects.tkObj.deiconify()
-                    print("\n\n{} name is not allowed".format(message))
-                    input("\npress enter to continue")
-                    sys.exit()
-
-            count = 1
-
                 
 
         # encrypting the message
         tempMessage = message
-        message = HandleEncryption.encrypt(lenstr(message))
+        message = HandleEncryption.encryptor(message)
 
         TkObjects.myMessage.set("")
 
         # sending the message
-        GlobalData.serverObj.sendto(bytes(message) , GlobalData.serverAddress)
+        GlobalData.serverObj.sendto(bytes(message , "utf-8") , GlobalData.serverAddress)
 
         # if messgae was to quit
         if(tempMessage == GlobalData.quitStatement):
