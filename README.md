@@ -28,3 +28,11 @@ example - john,mynameisjohn were john is user name and mynameisjohn is user key
 3. enter your username 
 4. enter your user key
 5. start chatting
+
+
+
+# license
+this project is licensed under GNU GENERAL PUBLIC LICENSE VERSION 3
+
+Visit www.letscodeofficial.com/gnuV3 for license terms
+
